@@ -5,7 +5,7 @@
 <main class="container">
   <h1>Print-pdf</h1>
   <form id="main">
-    <label>filename<input name="filename" type="text" title="output filename" required></label>
+    <label>filename<input name="filename" type="text" title="output filename" placeholder="output.pdf" required></label>
     <label>URL<input id="url" type="text" placeholder="http://127.0.0.1:8080/test.md?print-pdf" title="https://..." required></label>
     <!-- TODO: waitVisible 也許可以考慮設定成多個 -->
     <label>WaitVisible<input name="waitVisible" type="text" placeholder="body"></label>
@@ -32,7 +32,20 @@
 </body>
 
 <script>
+  function getFilename() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const seconds = String(now.getSeconds()).padStart(2, '0')
+
+    return `${year}${month}${day}_${hours}_${minutes}_${seconds}`
+  }
+
   const form = document.forms["main"]
+  form.filename.value = getFilename() + ".pdf" // init
   form.onsubmit = async (e) => {
     e.preventDefault()
     const formData = new FormData()
