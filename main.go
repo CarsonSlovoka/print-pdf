@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/chromedp/cdproto/page"
@@ -53,8 +54,33 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "The URL does not start with http or empty", http.StatusBadRequest)
 		return
 	}
+
+	result := struct {
+		Status int    `json:"status"`
+		Msg    string `json:"msg,omitempty"`
+	}{}
+
 	waitVisible := r.PostForm.Get("waitVisible")
 	filename := r.PostForm.Get("filename")
+
+	displayHeaderFooter := r.PostForm.Get("displayHeaderFooter") == "1"
+	printBackground := r.PostForm.Get("printBackground") == "1"
+
+	width, err1 := strconv.ParseFloat(r.PostForm.Get("width"), 64)
+	height, err2 := strconv.ParseFloat(r.PostForm.Get("height"), 64)
+	if errBorder := errors.Join(err1, err2); errBorder != nil {
+		http.Error(w, "size error"+errBorder.Error(), http.StatusBadRequest)
+		return
+	}
+
+	marginTop, err1 := strconv.ParseFloat(r.PostForm.Get("top"), 64)
+	marginBottom, err2 := strconv.ParseFloat(r.PostForm.Get("bottom"), 64)
+	marginLeft, err3 := strconv.ParseFloat(r.PostForm.Get("left"), 64)
+	marginRight, err4 := strconv.ParseFloat(r.PostForm.Get("right"), 64)
+	if errBorder := errors.Join(err1, err2, err3, err4); errBorder != nil {
+		http.Error(w, "margin error"+errBorder.Error(), http.StatusBadRequest)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
@@ -78,18 +104,18 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		}()
 		var buf []byte
 		buf, _, err = page.PrintToPDF().
-			WithDisplayHeaderFooter(false).
-			WithPrintBackground(true). // 啟用背景圖型
+			WithDisplayHeaderFooter(displayHeaderFooter).
+			WithPrintBackground(printBackground). // 建議啟用
 
 			// a4 8.3 x 11.7
-			WithPaperWidth(8.3).
-			WithPaperHeight(11.7).
+			WithPaperWidth(width).
+			WithPaperHeight(height).
 
 			// 邊界設定為0
-			WithMarginTop(0).
-			WithMarginBottom(0).
-			WithMarginLeft(0).
-			WithMarginRight(0).
+			WithMarginTop(marginTop).
+			WithMarginBottom(marginBottom).
+			WithMarginLeft(marginLeft).
+			WithMarginRight(marginRight).
 			Do(ctx)
 		if err != nil {
 			return err
@@ -98,10 +124,6 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		return err
 	}))
 
-	result := struct {
-		Status int    `json:"status"`
-		Msg    string `json:"msg,omitempty"`
-	}{}
 	if err := chromedp.Run(ctx2, tasks); err != nil {
 		result.Status = http.StatusInternalServerError
 		result.Msg = err.Error()
