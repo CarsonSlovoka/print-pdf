@@ -4,9 +4,11 @@
 <body>
 <main class="container">
   <h1>Print-pdf</h1>
-  <form id="main">
+  <form id="main"
+        method="post" action="/download" enctype="multipart/form-data"
+  >
     <label>filename<input name="filename" type="text" title="output filename" placeholder="output.pdf" required></label>
-    <label>URL<input id="url" type="text" placeholder="http://127.0.0.1:8080/test.md?print-pdf" title="https://..." required></label>
+    <label>URL<input name="url" type="text" placeholder="http://127.0.0.1:8080/test.md?print-pdf" title="https://..." required></label>
     <!-- TODO: waitVisible 也許可以考慮設定成多個 -->
     <label>WaitVisible<input name="waitVisible" type="text" placeholder="body"></label>
 
@@ -46,31 +48,4 @@
 
   const form = document.forms["main"]
   form.filename.value = getFilename() + ".pdf" // init
-  form.onsubmit = async (e) => {
-    e.preventDefault()
-    const formData = new FormData()
-    formData.set("url", form.url.value)
-    formData.set("filename", form.filename.value)
-    formData.set("waitVisible", form.waitVisible.value)
-
-    formData.set("width", form.width.value)
-    formData.set("height", form.height.value)
-    formData.set("headerFooter", form.displayHeaderFooter.checked ? "1" : "0")
-    formData.set("printBackground", form.printBackground.checked ? "1" : "0")
-    formData.set("top", form.top.value)
-    formData.set("bottom", form.bottom.value)
-    formData.set("left", form.left.value)
-    formData.set("right", form.right.value)
-
-    const resp = await fetch("/download", {
-      method: "post",
-      body: formData,
-    })
-    if (!resp.ok) {
-      alert(`${resp.statusText} (${resp.status}) | ${await resp.text()} `)
-    } else {
-      document.querySelector("pre").innerHTML = JSON.stringify(await resp.json(), null, 2)
-    }
-    return false
-  }
 </script>

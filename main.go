@@ -63,8 +63,8 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	waitVisible := r.PostForm.Get("waitVisible")
 	filename := r.PostForm.Get("filename")
 
-	displayHeaderFooter := r.PostForm.Get("displayHeaderFooter") == "1"
-	printBackground := r.PostForm.Get("printBackground") == "1"
+	displayHeaderFooter := r.PostForm.Get("displayHeaderFooter") == "on"
+	printBackground := r.PostForm.Get("printBackground") == "on"
 
 	width, err1 := strconv.ParseFloat(r.PostForm.Get("width"), 64)
 	height, err2 := strconv.ParseFloat(r.PostForm.Get("height"), 64)
@@ -82,10 +82,12 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	ctx2, cancel2 := chromedp.NewContext(ctx)
-	defer cancel2()
+
+	ctx2, cancel3 := chromedp.NewContext(ctx)
+	// ctx2, cancel2 := chromedp.NewContext(allocCtx, chromedp.WithDebugf(log.Printf))
+	defer cancel3()
 
 	tasks := chromedp.Tasks{
 		chromedp.Navigate(targetURL),
@@ -93,6 +95,7 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	if waitVisible != "" {
 		tasks = append(tasks, chromedp.WaitVisible(waitVisible))
 	}
+	tasks = append(tasks, chromedp.Sleep(5*time.Second))
 
 	tasks = append(tasks, chromedp.ActionFunc(func(ctx context.Context) error {
 		f, err := os.Create(filename)
@@ -143,8 +146,8 @@ func main() {
 	flag.IntVar(&port, "port", 9000, "port number")
 	flag.Parse()
 
-	http.HandleFunc("/", handleHome)
-	http.HandleFunc("/download", handleDownload)
+	http.HandleFunc("GET /", handleHome)
+	http.HandleFunc("POST /download", handleDownload)
 
 	fmt.Println("Please visit the webpage: http://127.0.0.1:" + strconv.Itoa(port))
 	if err := http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), nil); err != nil {
