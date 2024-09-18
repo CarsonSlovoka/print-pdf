@@ -60,7 +60,6 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		Msg    string `json:"msg,omitempty"`
 	}{}
 
-	waitVisible := r.PostForm.Get("waitVisible")
 	filename := r.PostForm.Get("filename")
 
 	displayHeaderFooter := r.PostForm.Get("displayHeaderFooter") == "on"
@@ -85,17 +84,43 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	ctx2, cancel3 := chromedp.NewContext(ctx)
-	// ctx2, cancel2 := chromedp.NewContext(allocCtx, chromedp.WithDebugf(log.Printf))
+	opts := chromedp.DefaultExecAllocatorOptions[:]
+
+	if r.PostForm.Get("headless") == "on" {
+		opts = append(opts, []chromedp.ExecAllocatorOption{
+			chromedp.Flag("headless", false),
+			chromedp.Flag("start-maximized", true),
+		}...)
+	}
+
+	allocCtx, cancel2 := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel2()
+
+	var ctx2 context.Context
+	var cancel3 context.CancelFunc
+	if r.PostForm.Get("debug") == "on" {
+		ctx2, cancel3 = chromedp.NewContext(allocCtx, chromedp.WithDebugf(log.Printf))
+	} else {
+		ctx2, cancel3 = chromedp.NewContext(allocCtx)
+	}
 	defer cancel3()
 
 	tasks := chromedp.Tasks{
 		chromedp.Navigate(targetURL),
 	}
-	if waitVisible != "" {
-		tasks = append(tasks, chromedp.WaitVisible(waitVisible))
+
+	/*
+		waitVisible := r.PostForm.Get("waitVisible")
+		if waitVisible != "" {
+			tasks = append(tasks, chromedp.WaitVisible(waitVisible))
+		}
+	*/
+	if len(r.PostForm.Get("sleep")) > 0 {
+		sleep, err := strconv.ParseInt(r.PostForm.Get("sleep"), 10, 64)
+		if err == nil {
+			tasks = append(tasks, chromedp.Sleep(time.Duration(sleep)*time.Second))
+		}
 	}
-	tasks = append(tasks, chromedp.Sleep(5*time.Second))
 
 	tasks = append(tasks, chromedp.ActionFunc(func(ctx context.Context) error {
 		f, err := os.Create(filename)
