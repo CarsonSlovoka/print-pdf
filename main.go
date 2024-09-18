@@ -12,6 +12,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -174,8 +176,25 @@ func main() {
 	http.HandleFunc("GET /", handleHome)
 	http.HandleFunc("POST /download", handleDownload)
 
-	fmt.Println("Please visit the webpage: http://127.0.0.1:" + strconv.Itoa(port))
-	if err := http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), nil); err != nil {
+	serverURL := "http://127.0.0.1:" + strconv.Itoa(port)
+	go func() {
+		// https://stackoverflow.com/a/39324149/9935654
+		<-time.After(100 * time.Millisecond) // wait server start
+		var cmd string
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = "open"
+		case "windows":
+			cmd = "explorer"
+		default: // "linux", "freebsd", "openbsd", "netbsd"
+			cmd = "xdg-open"
+		}
+		_ = exec.Command(cmd, serverURL).Start()
+	}()
+
+	fmt.Println("Please visit the webpage: ", serverURL)
+	if err := http.ListenAndServe(strings.Trim(serverURL, "http://"), nil); err != nil {
 		log.Fatal(err)
 	}
+
 }
