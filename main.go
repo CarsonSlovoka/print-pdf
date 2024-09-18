@@ -146,6 +146,7 @@ func main() {
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/download", handleDownload)
 
+	fmt.Println("Please visit the webpage: http://127.0.0.1:" + strconv.Itoa(port))
 	if err := http.ListenAndServe("127.0.0.1:"+strconv.Itoa(port), nil); err != nil {
 		log.Fatal(err)
 	}
